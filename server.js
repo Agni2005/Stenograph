@@ -7,49 +7,30 @@ const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
 const PORT = process.env.PORT || 3000;
 const MAGIC = Buffer.from("STEG");
-const CHECKSUM_SIZE = 8;
-const HEADER_SIZE = MAGIC.length + 4 + CHECKSUM_SIZE;
+const SALT_SIZE = 16;
+const IV_SIZE = 12;
+const AUTH_TAG_SIZE = 16;
+const ENCRYPTION_KEY_SIZE = 32;
+const HEADER_SIZE = MAGIC.length + 4 + SALT_SIZE + IV_SIZE + AUTH_TAG_SIZE;
 
 app.use(express.static("public"));
 
-function deriveKeystream(key, length) {
-  const chunks = [];
-  let counter = 0;
-
-  while (Buffer.concat(chunks).length < length) {
-    const hash = crypto
-      .createHash("sha256")
-      .update(`${key}:${counter}`)
-      .digest();
-    chunks.push(hash);
-    counter += 1;
-  }
-
-  return Buffer.concat(chunks).subarray(0, length);
-}
-
-function xorMessage(messageBuffer, key) {
-  const keystream = deriveKeystream(key, messageBuffer.length);
-  const output = Buffer.alloc(messageBuffer.length);
-
-  for (let index = 0; index < messageBuffer.length; index += 1) {
-    output[index] = messageBuffer[index] ^ keystream[index];
-  }
-
-  return output;
-}
-
-function getChecksum(buffer) {
-  return crypto.createHash("sha256").update(buffer).digest().subarray(0, CHECKSUM_SIZE);
+function deriveEncryptionKey(password, salt) {
+  return crypto.scryptSync(password, salt, ENCRYPTION_KEY_SIZE);
 }
 
 function toPayload(message, key) {
   const messageBuffer = Buffer.from(message, "utf8");
-  const encrypted = xorMessage(messageBuffer, key);
+  const salt = crypto.randomBytes(SALT_SIZE);
+  const iv = crypto.randomBytes(IV_SIZE);
+  const encryptionKey = deriveEncryptionKey(key, salt);
+  const cipher = crypto.createCipheriv("aes-256-gcm", encryptionKey, iv);
+  const encrypted = Buffer.concat([cipher.update(messageBuffer), cipher.final()]);
+  const authTag = cipher.getAuthTag();
   const lengthBuffer = Buffer.alloc(4);
   lengthBuffer.writeUInt32BE(encrypted.length, 0);
-  const checksum = getChecksum(messageBuffer);
-  return Buffer.concat([MAGIC, lengthBuffer, checksum, encrypted]);
+
+  return Buffer.concat([MAGIC, lengthBuffer, salt, iv, authTag, encrypted]);
 }
 
 function fromPayload(payload, key) {
@@ -68,16 +49,23 @@ function fromPayload(payload, key) {
     throw new Error("The hidden message appears to be incomplete or corrupted.");
   }
 
-  const checksum = payload.subarray(MAGIC.length + 4, HEADER_SIZE);
+  let cursor = MAGIC.length + 4;
+  const salt = payload.subarray(cursor, cursor + SALT_SIZE);
+  cursor += SALT_SIZE;
+  const iv = payload.subarray(cursor, cursor + IV_SIZE);
+  cursor += IV_SIZE;
+  const authTag = payload.subarray(cursor, cursor + AUTH_TAG_SIZE);
   const encrypted = payload.subarray(HEADER_SIZE, expectedLength);
-  const decrypted = xorMessage(encrypted, key);
-  const actualChecksum = getChecksum(decrypted);
 
-  if (!checksum.equals(actualChecksum)) {
+  try {
+    const encryptionKey = deriveEncryptionKey(key, salt);
+    const decipher = crypto.createDecipheriv("aes-256-gcm", encryptionKey, iv);
+    decipher.setAuthTag(authTag);
+    const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
+    return decrypted.toString("utf8");
+  } catch (error) {
     throw new Error("The key is incorrect or the hidden data is corrupted.");
   }
-
-  return decrypted.toString("utf8");
 }
 
 function getCapacity(png) {
