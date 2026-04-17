@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stenographer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <section class="hero">
+        <p class="eyebrow">Image Steganography</p>
+        <h1>Hide a message inside a PNG with a secret key.</h1>
+        <p class="lead">
+          Encode a message into an image, then recover it later by uploading the
+          image and using the same key.
+        </p>
+      </section>
+
+      <section class="grid">
+        <article class="panel">
+          <div class="panel-head">
+            <h2>Encoder</h2>
+            <span>Creates a new PNG with your hidden message</span>
+          </div>
+
+          <form id="encode-form" class="form">
+            <label>
+              <span>PNG image</span>
+              <input type="file" name="image" accept="image/png" required />
+            </label>
+
+            <label>
+              <span>Secret message</span>
+              <textarea
+                name="message"
+                rows="6"
+                placeholder="Write the message you want to hide"
+                required
+              ></textarea>
+            </label>
+
+            <label>
+              <span>Key</span>
+              <input
+                type="password"
+                name="key"
+                placeholder="Enter a shared secret key"
+                required
+              />
+            </label>
+
+            <button type="submit">Encode & Download</button>
+          </form>
+
+          <p id="encode-status" class="status"></p>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head">
+            <h2>Decoder</h2>
+            <span>Extracts the hidden message from a PNG</span>
+          </div>
+
+          <form id="decode-form" class="form">
+            <label>
+              <span>Encoded PNG image</span>
+              <input type="file" name="image" accept="image/png" required />
+            </label>
+
+            <label>
+              <span>Key</span>
+              <input
+                type="password"
+                name="key"
+                placeholder="Enter the same secret key"
+                required
+              />
+            </label>
+
+            <button type="submit">Decode Message</button>
+          </form>
+
+          <div class="result">
+            <p class="result-label">Decoded message</p>
+            <pre id="decoded-message">Your decoded message will appear here.</pre>
+          </div>
+
+          <p id="decode-status" class="status"></p>
+        </article>
+      </section>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>

@@ -1,0 +1,21 @@
+{
+  "name": "stenographer",
+  "version": "1.0.0",
+  "description": "Full-stack image steganography app for encoding and decoding hidden messages with a key.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [
+    "steganography",
+    "express",
+    "png"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.21.2",
+    "multer": "^2.0.2",
+    "pngjs": "^7.0.0"
+  }
+}
